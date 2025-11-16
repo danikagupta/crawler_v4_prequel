@@ -1,1 +1,8 @@
 pandas
+streamlit
+supabase
+
+langchain_openai
+langchain_community
+langchain
+openai 

@@ -6,3 +6,5 @@ venv
 pdf_txt_copied
 pdf_txt_orig
 
+*.pyc
+
