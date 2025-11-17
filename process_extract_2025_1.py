@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import TypedDict, Annotated, List, Dict
 from pydantic import BaseModel
 
+from tiktoken import get_encoding
+
 #
 # We are reusing the code from before, but with an additional column in output.
 #
@@ -18,15 +20,15 @@ from pydantic import BaseModel
 
 DF_FILE="pdf_text.csv"
 DIR_PATH="pdf_txt"
-TABLE_DIR_PATH="pdf_tables_2025"
+TABLE_DIR_PATH="pdf_tables_2025v4"
 MAX_INPUT_LENGTH=100000
 
 class ExperimentTable(BaseModel):
     experiments: List[Dict[str, str]]
 
 from langchain_openai import ChatOpenAI
-from langchain.output_parsers import PydanticOutputParser
-from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 
 def one_llm_extract_table(text_content):
     llmModel = ChatOpenAI(model_name="gpt-4o-mini", max_tokens=3000,api_key=st.secrets['OPENAI_API_KEY'])
@@ -65,13 +67,13 @@ def one_llm_extract_table(text_content):
     )
 
     _input = chat_prompt.format_prompt(text=text_content)
-    output = llmModel(_input.to_messages())
+    output = llmModel.invoke(_input.to_messages())
     resp = parser.parse(output.content)
 
-    print(f"\n\n* * * * *\nResponse: \n\n{resp}\n\n*********\n")
-    st.subheader("Analysis Result:")
-    st.table(resp.experiments)
-    st.write(f"Response: {resp.experiments}")
+    #print(f"\n\n* * * * *\nResponse: \n\n{resp}\n\n*********\n")
+    #st.subheader("Analysis Result:")
+    #st.table(resp.experiments)
+    #st.write(f"Response: {resp.experiments}")
     return resp.experiments
 
 def process_file(filename,num_bytes,num_words,num_tokens):
@@ -93,6 +95,25 @@ def write_table_response(filename,table_response):
     df=pd.DataFrame(table_response)
     df.to_csv(fqfn,index=False)
 
+def count_tokens(filename):
+    # Placeholder logic for processing the file
+    # In reality, this would contain the logic you want to apply
+    #st.write(f"Counting tokens for file {filename}")
+    fqfn=os.path.join(DIR_PATH,filename)
+    num_bytes = os.path.getsize(fqfn)
+    with open(fqfn,'r') as f:
+        text_content=f.read()
+    words=text_content.split()
+    num_words=len(words)
+
+    encoding_name = "o200k_base"
+    encoding=get_encoding(encoding_name)
+    tokens=encoding.encode(text_content)
+    num_tokens=len(tokens)
+    
+    print(f"Processing file {filename}")
+    return num_bytes,num_words,num_tokens
+
 
 
 def process_random_file(df):
@@ -102,22 +123,23 @@ def process_random_file(df):
     #condition=(df['status'] == 'processed6') & (df['score']==10) & (df['score2']==10) & (df['study']=='Experimental')
     #condition=(df['status'] == 'processed6') & (df['score']==10) & (df['score2']==10)
     #condition=(df['status'] == 'processed6') & (df['score']==10) 
-    condition=(df['status'] == 'processed7')
+    condition=(df['status'] == 'Initial')
     new_status_df = df[condition]
     st.write(f"Processing {new_status_df.shape[0]} rows ")
-    st.dataframe(new_status_df)
+    #st.dataframe(new_status_df)
     if new_status_df.empty:
-        print("No rows with status=processed7 to process.")
+        print("No rows with status=Initial to process.")
         return df
     
     random_row = new_status_df.sample(n=1)
     index = random_row.index[0]
     filename = random_row['filename'].values[0]
-    num_bytes= random_row['bytes'].values[0]
-    num_words= random_row['words'].values[0]
-    num_tokens= random_row['tokens'].values[0]
-    st.write(f"Processing file {filename}: Got {num_bytes} bytes, {num_words} words, {num_tokens} tokens")
-    print(f"Processing file {filename}: Got {num_bytes} bytes, {num_words} words, {num_tokens} tokens")
+    #num_bytes= random_row['bytes'].values[0]
+    #num_words= random_row['words'].values[0]
+    #num_tokens= random_row['tokens'].values[0]
+    num_bytes,num_words,num_tokens=count_tokens(filename)
+    #st.write(f"Processing file {filename}: Got {num_bytes} bytes, {num_words} words, {num_tokens} tokens")
+    #print(f"Processing file {filename}: Got {num_bytes} bytes, {num_words} words, {num_tokens} tokens")
     
     # Call the process_file function on the filename
     table_response = process_file(filename,num_bytes,num_words,num_tokens)
@@ -126,7 +148,7 @@ def process_random_file(df):
     
  
 
-    df.at[index, 'status'] = 'processed8'
+    df.at[index, 'status'] = 'processed2'
     df.at[index, 'updated'] = pd.Timestamp.now()
     
     return df

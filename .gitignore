@@ -3,8 +3,11 @@
 env
 venv
 
+.streamlit/secrets.toml
+
 pdf_txt_copied
 pdf_txt_orig
 
 *.pyc
 
+.DS_Store
